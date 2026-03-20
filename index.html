@@ -9,8 +9,8 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   
-  <!-- Babel for JSX -->
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- Babel for JSX (최신 버전으로 변경) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -19,8 +19,12 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   
   <style>
-    body { background-color: #000; margin: 0; }
+    body { background-color: #000; margin: 0; color: #d1d5db; }
     .material-symbols-outlined { vertical-align: middle; }
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -94,7 +98,10 @@
       }, [gameState]);
 
       useEffect(() => {
-        logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // 옵셔널 체이닝 대신 논리 연산자 사용 (Babel 호환성)
+        if (logEndRef.current) {
+          logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }, [logs]);
 
       const addLog = (msg) => {
@@ -131,7 +138,7 @@
         return (
           <div className="mt-4 border-t border-gray-700 pt-4">
             {unlockedHints[objId] ? (
-              <div className="text-yellow-400 text-sm p-2 bg-yellow-900/30 border border-yellow-700/50">
+              <div className="text-yellow-400 text-sm p-2 bg-yellow-900/30 border border-yellow-700/50 rounded">
                 [힌트] {HINTS[objId]}
               </div>
             ) : hintQuiz ? (
@@ -143,7 +150,7 @@
                     value={hintInput} 
                     onChange={e => setHintInput(e.target.value)} 
                     onKeyDown={e => e.key === 'Enter' && solveHint()}
-                    className="w-full max-w-[150px] bg-black border border-gray-600 p-1 text-center outline-none focus:border-white" 
+                    className="w-full max-w-[150px] bg-black border border-gray-600 p-1 text-center outline-none focus:border-white rounded" 
                   />
                   <button onClick={solveHint} className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded whitespace-nowrap">확인</button>
                   <button onClick={() => setHintQuiz(null)} className="text-gray-500 hover:text-gray-300 px-2 whitespace-nowrap">취소</button>
@@ -188,7 +195,10 @@
 
         if (isSeqCorrect && isV1Correct && isV2Correct) {
           setSolved(p => ({ ...p, desk: true }));
-          setInventory(p => [...p, '탐구 기록 칩']);
+          setInventory(p => {
+            if (p.includes('탐구 기록 칩')) return p;
+            return [...p, '탐구 기록 칩'];
+          });
           addLog('노트의 내용을 논리적으로 완성했습니다. [탐구 기록 칩]을 획득했습니다.');
           setActiveObject(null);
         } else {
@@ -203,7 +213,10 @@
 
         if (isK1Correct && isK2Correct && isK3Correct) {
           setSolved(p => ({ ...p, shelf: true }));
-          setInventory(p => [...p, '과학사 인증 키']);
+          setInventory(p => {
+            if (p.includes('과학사 인증 키')) return p;
+            return [...p, '과학사 인증 키'];
+          });
           addLog('과거의 과학적 발견 기록을 복원했습니다. [과학사 인증 키]를 획득했습니다.');
           setActiveObject(null);
         } else {
@@ -217,7 +230,10 @@
 
         if (isFCorrect && isACorrect) {
           setSolved(p => ({ ...p, pc: true }));
-          setInventory(p => [...p, '보안 오버라이드 코드']);
+          setInventory(p => {
+            if (p.includes('보안 오버라이드 코드')) return p;
+            return [...p, '보안 오버라이드 코드'];
+          });
           addLog('첨단 기술 네트워크 오류를 수정했습니다. 문을 제어할 [보안 오버라이드 코드]를 획득했습니다.');
           setActiveObject(null);
         } else {
@@ -254,7 +270,7 @@
       };
 
       return (
-        <div className="min-h-screen bg-black text-gray-300 font-sans p-4 flex flex-col items-center">
+        <div className="min-h-screen bg-black text-gray-300 font-sans p-4 flex flex-col items-center justify-center">
           <div className="w-full max-w-4xl flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
             <h1 className="text-xl font-bold tracking-wider text-gray-100 flex items-center gap-2">
               <span className="material-symbols-outlined" style={{fontSize: '20px'}}>search</span> LAB_ESCAPE: THE MYSTERY
@@ -321,7 +337,7 @@
               <h2 className="text-sm font-bold border-b border-gray-700 pb-2 mb-2">인벤토리</h2>
               <div className="flex-1 overflow-y-auto space-y-2">
                 {inventory.length === 0 ? (
-                  <p className="text-xs text-gray-500 italic">가진 것이 없다.</p>
+                  <p className="text-xs text-gray-500 italic text-center py-4">가진 것이 없다.</p>
                 ) : (
                   inventory.map((item, idx) => (
                     <div key={idx} className="bg-gray-800 p-2 rounded text-sm flex items-center gap-2 border border-gray-600">
@@ -333,28 +349,28 @@
               <div className="mt-4 pt-2 border-t border-gray-700">
                 <h2 className="text-sm font-bold mb-2">진행 상태</h2>
                 <div className="text-xs space-y-1 text-gray-400">
-                  <p>전력 복구: {solved.generator ? <span className="text-green-400">ON</span> : <span className="text-red-400">OFF</span>}</p>
-                  <p>보안 인가: {solved.pc ? <span className="text-green-400">승인</span> : <span className="text-red-400">미승인</span>}</p>
+                  <p className="flex justify-between">전력 복구: {solved.generator ? <span className="text-green-400 font-bold">ON</span> : <span className="text-red-400">OFF</span>}</p>
+                  <p className="flex justify-between">보안 인가: {solved.pc ? <span className="text-green-400 font-bold">승인</span> : <span className="text-red-400">미승인</span>}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="w-full max-w-4xl mt-4 bg-gray-900 border border-gray-700 p-4 h-40 overflow-y-auto rounded font-mono text-sm leading-relaxed shadow-inner">
-            {logs.map((log, idx) => <p key={idx} className="mb-1">{log}</p>)}
+            {logs.map((log, idx) => <p key={idx} className="mb-1 text-gray-400 tracking-tight">{log}</p>)}
             <div ref={logEndRef} />
           </div>
 
           {gameState !== 'playing' && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-              <div className="bg-gray-900 p-8 border border-gray-700 text-center max-w-md rounded">
+            <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+              <div className="bg-gray-900 p-8 border border-gray-700 text-center max-w-md rounded-lg shadow-2xl">
                 <h2 className={`text-3xl font-bold mb-4 ${gameState === 'escaped' ? 'text-green-500' : 'text-red-500'}`}>
                   {gameState === 'escaped' ? 'ESCAPED' : 'GAME OVER'}
                 </h2>
-                <p className="mb-6">
+                <p className="mb-6 text-gray-400">
                   {gameState === 'escaped' ? '무사히 연구실을 빠져나왔습니다. 모든 패러다임을 이해했습니다.' : '제한 시간이 초과되었습니다. 영원히 연구실에 갇혔습니다.'}
                 </p>
-                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-gray-800 border border-gray-600 hover:bg-gray-700">
+                <button onClick={() => window.location.reload()} className="px-6 py-2 bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors rounded">
                   처음부터 다시
                 </button>
               </div>
@@ -362,146 +378,85 @@
           )}
 
           {activeObject && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
-              <div className="bg-gray-900 border border-gray-600 p-6 max-w-lg w-full rounded shadow-2xl relative">
-                <button onClick={() => { setActiveObject(null); setHintQuiz(null); setHintInput(''); }} className="absolute top-2 right-4 text-gray-400 hover:text-white text-xl font-bold">&times;</button>
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40 p-4">
+              <div className="bg-gray-900 border border-gray-600 p-6 max-w-lg w-full rounded-lg shadow-2xl relative animate-in fade-in zoom-in duration-200">
+                <button onClick={() => { setActiveObject(null); setHintQuiz(null); setHintInput(''); }} className="absolute top-2 right-4 text-gray-500 hover:text-white text-2xl font-bold">&times;</button>
                 
                 {activeObject === 'desk' && (
                   <div>
-                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2">낡은 연구 책상</h3>
+                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2 text-gray-100">낡은 연구 책상</h3>
                     {!solved.desk ? (
                       <div className="space-y-4 text-sm">
-                        <p className="text-gray-400">"종이 헬리콥터의 낙하 시간 탐구... 순서가 뒤섞였다."</p>
-                        <div className="bg-gray-800 p-3 rounded text-gray-300">
+                        <p className="text-gray-400 italic">"종이 헬리콥터의 낙하 시간 탐구... 순서가 뒤섞였다."</p>
+                        <div className="bg-gray-800 p-3 rounded text-gray-300 border border-gray-700">
                           <p>(가) 날개 길이는 변화시키고, 너비와 꼬리 길이는 같게 한다.</p>
                           <p>(나) 날개 길이가 길수록 천천히 떨어질 것이다.</p>
                           <p>(다) 떨어지는 시간은 3번 반복하여 평균값으로 구한다.</p>
                         </div>
                         <div>
-                          <label className="block text-xs mb-1">논리적 순서 (예: 가나다):</label>
-                          <input type="text" value={p1Seq} onChange={e=>setP1Seq(e.target.value)} className="w-full bg-black border border-gray-600 p-2 outline-none focus:border-white" />
+                          <label className="block text-xs mb-1 text-gray-500">논리적 순서 (예: 가나다):</label>
+                          <input type="text" value={p1Seq} onChange={e=>setP1Seq(e.target.value)} className="w-full bg-black border border-gray-700 p-2 outline-none focus:border-gray-500 rounded" />
                         </div>
-                        <table className="w-full text-center border-collapse border border-gray-600">
-                          <thead><tr className="bg-gray-800"><th className="border border-gray-600 p-1">구분</th><th className="border border-gray-600 p-1">변인</th></tr></thead>
+                        <table className="w-full text-center border-collapse border border-gray-700">
+                          <thead><tr className="bg-gray-800 text-gray-400 text-xs"><th className="border border-gray-700 p-1">구분</th><th className="border border-gray-700 p-1">변인</th></tr></thead>
                           <tbody>
-                            <tr><td className="border border-gray-600 p-1">다르게 할 조건</td><td className="border border-gray-600 p-1"><input type="text" value={p1V1} onChange={e=>setP1V1(e.target.value)} placeholder="OO OO" className="w-full bg-transparent text-center outline-none" /></td></tr>
-                            <tr><td className="border border-gray-600 p-1">같게 할 조건</td><td className="border border-gray-600 p-1"><input type="text" value={p1V2} onChange={e=>setP1V2(e.target.value)} placeholder="OO OO 등" className="w-full bg-transparent text-center outline-none" /></td></tr>
+                            <tr><td className="border border-gray-700 p-1 bg-gray-800/50">다르게 할 조건</td><td className="border border-gray-700 p-1"><input type="text" value={p1V1} onChange={e=>setP1V1(e.target.value)} placeholder="변인 입력" className="w-full bg-transparent text-center outline-none" /></td></tr>
+                            <tr><td className="border border-gray-700 p-1 bg-gray-800/50">같게 할 조건</td><td className="border border-gray-700 p-1"><input type="text" value={p1V2} onChange={e=>setP1V2(e.target.value)} placeholder="변인 입력" className="w-full bg-transparent text-center outline-none" /></td></tr>
                           </tbody>
                         </table>
-                        <button onClick={checkDesk} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-500 py-2">기록 복원</button>
+                        <button onClick={checkDesk} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-2 rounded font-bold transition-colors text-gray-200">기록 복원</button>
                         {renderHintSection('desk')}
                       </div>
-                    ) : <p className="text-gray-400 italic">이미 조사를 마친 책상이다.</p>}
+                    ) : <p className="text-gray-500 italic py-4 text-center">이미 조사를 마친 책상이다.</p>}
                   </div>
                 )}
 
                 {activeObject === 'shelf' && (
                   <div>
-                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2">먼지 쌓인 책장</h3>
+                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2 text-gray-100">먼지 쌓인 책장</h3>
                     {!solved.shelf ? (
                       <div className="space-y-4 text-sm">
-                        <p className="text-gray-400">"에이크만의 관찰 일지와 코페르니쿠스의 서적..."</p>
-                        <div className="bg-gray-800 p-3 rounded">
-                          <p>[에이크만의 가설]</p>
-                          <p>"( <input type="text" value={p2K1} onChange={e=>setP2K1(e.target.value)} className="w-16 bg-black border-b border-gray-500 text-center outline-none" /> )에는 ( <input type="text" value={p2K2} onChange={e=>setP2K2(e.target.value)} className="w-16 bg-black border-b border-gray-500 text-center outline-none" /> )을/를 치료하는 물질이 있을 것이다."</p>
+                        <p className="text-gray-400 italic">"에이크만의 관찰 일지와 코페르니쿠스의 서적..."</p>
+                        <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                          <p className="text-xs text-gray-500 mb-2">[에이크만의 가설]</p>
+                          <p>"( <input type="text" value={p2K1} onChange={e=>setP2K1(e.target.value)} className="w-16 bg-black border-b border-gray-600 text-center outline-none focus:border-gray-400" /> )에는 ( <input type="text" value={p2K2} onChange={e=>setP2K2(e.target.value)} className="w-16 bg-black border-b border-gray-600 text-center outline-none focus:border-gray-400" /> )을/를 치료하는 물질이 있을 것이다."</p>
                         </div>
-                        <table className="w-full text-center border-collapse border border-gray-600">
-                          <thead><tr className="bg-gray-800"><th className="border border-gray-600 p-1">학자</th><th className="border border-gray-600 p-1">사고방식의 변화</th></tr></thead>
+                        <table className="w-full text-center border-collapse border border-gray-700">
+                          <thead><tr className="bg-gray-800 text-gray-400 text-xs"><th className="border border-gray-700 p-1">학자</th><th className="border border-gray-700 p-1">사고방식의 변화</th></tr></thead>
                           <tbody>
-                            <tr><td className="border border-gray-600 p-2">코페르니쿠스</td><td className="border border-gray-600 p-2">지구 중심 우주관 탈피<br/>( <input type="text" value={p2K3} onChange={e=>setP2K3(e.target.value)} className="w-16 bg-black border-b border-gray-500 text-center outline-none" /> ) 중심의 과학적 사고</td></tr>
+                            <tr><td className="border border-gray-700 p-2 bg-gray-800/50">코페르니쿠스</td><td className="border border-gray-700 p-2">지구 중심 우주관 탈피<br/>( <input type="text" value={p2K3} onChange={e=>setP2K3(e.target.value)} className="w-16 bg-black border-b border-gray-600 text-center outline-none focus:border-gray-400" /> ) 중심의 과학적 사고</td></tr>
                           </tbody>
                         </table>
-                        <button onClick={checkShelf} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-500 py-2">단서 조합</button>
+                        <button onClick={checkShelf} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-2 rounded font-bold transition-colors text-gray-200">단서 조합</button>
                         {renderHintSection('shelf')}
                       </div>
-                    ) : <p className="text-gray-400 italic">더 이상 쓸만한 단서는 없다.</p>}
+                    ) : <p className="text-gray-500 italic py-4 text-center">더 이상 쓸만한 단서는 없다.</p>}
                   </div>
                 )}
 
                 {activeObject === 'pc' && (
                   <div>
-                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2">메인 컴퓨터</h3>
+                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2 text-gray-100">메인 컴퓨터</h3>
                     {!solved.pc ? (
                       <div className="space-y-4 text-sm">
-                        <p className="text-gray-400">"미래 기술 예측 시뮬레이션에 구시대 기술이 섞여있다."</p>
-                        <table className="w-full text-center border-collapse border border-gray-600">
+                        <p className="text-gray-400 italic">"미래 기술 예측 시뮬레이션에 구시대 기술이 섞여있다."</p>
+                        <table className="w-full text-center border-collapse border border-gray-700">
                           <tbody>
-                            <tr><td className="border border-gray-600 p-1">1. 나노 백신</td><td className="border border-gray-600 p-1">2. 전동기</td><td className="border border-gray-600 p-1">3. 인공지능 로봇</td></tr>
+                            <tr className="bg-gray-800/50"><td className="border border-gray-700 p-2">1. 나노 백신</td><td className="border border-gray-700 p-2">2. 전동기</td><td className="border border-gray-700 p-2">3. 인공지능 로봇</td></tr>
                           </tbody>
                         </table>
-                        <div className="flex gap-2 items-center">
-                          <label>제외할 구시대 기술 번호:</label>
-                          <input type="text" value={p3F} onChange={e=>setP3F(e.target.value)} className="w-12 bg-black border border-gray-600 p-1 text-center outline-none focus:border-white" />
+                        <div className="flex gap-2 items-center justify-between bg-gray-800/30 p-2 rounded">
+                          <label className="text-gray-400">제외할 구시대 기술 번호:</label>
+                          <input type="text" value={p3F} onChange={e=>setP3F(e.target.value)} className="w-12 bg-black border border-gray-700 p-1 text-center outline-none focus:border-gray-500 rounded" />
                         </div>
-                        <div className="bg-gray-800 p-3 rounded">
-                          <p>자율주행 5단계: ( <input type="text" value={p3A} onChange={e=>setP3A(e.target.value)} className="w-16 bg-black border-b border-gray-500 text-center outline-none" /> )한 자율주행</p>
+                        <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                          <p>자율주행 5단계: ( <input type="text" value={p3A} onChange={e=>setP3A(e.target.value)} className="w-16 bg-black border-b border-gray-600 text-center outline-none focus:border-gray-400" /> )한 자율주행</p>
                         </div>
-                        <button onClick={checkPC} className="w-full mt-4 bg-blue-900 hover:bg-blue-800 border border-blue-500 py-2">시스템 수정</button>
+                        <button onClick={checkPC} className="w-full mt-4 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-700 py-2 rounded font-bold transition-colors text-blue-200">시스템 수정</button>
                         {renderHintSection('pc')}
                       </div>
-                    ) : <p className="text-blue-400 italic">보안 시스템이 정상적으로 해제되어 있다.</p>}
+                    ) : <p className="text-blue-400/70 italic py-4 text-center">보안 시스템이 정상적으로 해제되어 있다.</p>}
                   </div>
                 )}
 
                 {activeObject === 'generator' && (
-                  <div>
-                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2">비상 발전기</h3>
-                    {!solved.generator ? (
-                      <div className="space-y-4 text-sm">
-                        <p className="text-gray-400">"해양 풍력 발전 패널의 제어값을 조정해야 한다."</p>
-                        <table className="w-full text-center border-collapse border border-gray-600">
-                          <thead><tr className="bg-gray-800"><th className="border border-gray-600 p-1 w-1/4">구분</th><th className="border border-gray-600 p-1">내용</th></tr></thead>
-                          <tbody>
-                            <tr><td className="border border-gray-600 p-2">장점</td><td className="border border-gray-600 p-2">오염 물질이 적고 에너지 ( <input type="text" value={p4K1} onChange={e=>setP4K1(e.target.value)} className="w-12 bg-black border-b border-gray-500 text-center outline-none" /> )이/가 높음.</td></tr>
-                            <tr><td className="border border-gray-600 p-2">단점</td><td className="border border-gray-600 p-2">( <input type="text" value={p4K2} onChange={e=>setP4K2(e.target.value)} className="w-12 bg-black border-b border-gray-500 text-center outline-none" /> )와 진동이 생태계 피해 유발.</td></tr>
-                          </tbody>
-                        </table>
-                        <div className="bg-gray-800 p-3 rounded">
-                          <p>경고: 대기오염 및 기후 변화의 주원인인 [ <input type="text" value={p4K3} onChange={e=>setP4K3(e.target.value)} className="w-24 bg-black border-b border-gray-500 text-center outline-none" /> ]의 사용을 줄이십시오.</p>
-                        </div>
-                        <button onClick={checkGenerator} className="w-full mt-4 bg-yellow-900 hover:bg-yellow-800 border border-yellow-500 py-2 text-yellow-100">발전기 가동</button>
-                        {renderHintSection('generator')}
-                      </div>
-                    ) : <p className="text-yellow-500 italic">발전기가 웅웅거리며 원활하게 돌아가고 있다.</p>}
-                  </div>
-                )}
-
-                {activeObject === 'door' && (
-                  <div>
-                    <h3 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2">굳게 닫힌 철문</h3>
-                    <div className="space-y-4 text-sm">
-                      {(!solved.pc || !solved.generator) ? (
-                        <p className="text-red-400">전력이 들어오지 않거나 접근 권한이 없습니다. 방 안의 다른 사물들을 조사하여 문제를 해결하십시오.</p>
-                      ) : (
-                        <>
-                          <p className="text-gray-300 mb-2">"출입문 패널에 전원이 들어왔다. 마지막 문구가 적혀있다."</p>
-                          <div className="bg-gray-800 p-4 rounded text-center leading-loose">
-                            현세대뿐만 아니라 미래 세대까지 행복하고 풍요로운 사회가<br/>
-                            지속될 수 있도록 고민하고 실천하는 삶<br/><br/>
-                            <input 
-                              type="text" 
-                              value={finalKey} 
-                              onChange={e=>setFinalKey(e.target.value)} 
-                              placeholder="다섯 글자 키워드" 
-                              className="bg-black border border-gray-500 p-2 text-center text-lg tracking-widest outline-none focus:border-white" 
-                            />
-                          </div>
-                          <button onClick={checkDoor} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-500 py-3 font-bold tracking-widest">문 열기</button>
-                          {renderHintSection('door')}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
-</body>
-</html>
