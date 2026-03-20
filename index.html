@@ -1,512 +1,612 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>과학 방탈출 게임: THE MYSTERY</title>
-  
-  <!-- React & ReactDOM (안정적인 jsDelivr CDN 사용) -->
-  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
-  
-  <!-- Babel for JSX (최신 버전 및 프리셋 명시) -->
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Google Material Symbols -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-  
-  <style>
-    body { background-color: #000; margin: 0; color: #d1d5db; overflow: hidden; }
-    .material-symbols-outlined { vertical-align: middle; }
-    /* 스크롤바 커스텀 */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #111827; }
-    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-    #root { min-height: 100vh; display: flex; flex-direction: column; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수증기량 계산 게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; }
+        canvas { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: crosshair; }
+    </style>
 </head>
-<body>
-  <!-- JS 미작동 시 안내 -->
-  <div id="root">
-    <div style="color: white; text-align: center; padding-top: 50px;">
-      시스템 로딩 중... 잠시만 기다려주세요.<br>
-      (화면이 계속 검게 나오면 페이지를 새로고침하거나 브라우저 설정을 확인하세요.)
-    </div>
-  </div>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
 
-  <script type="text/babel" data-presets="react">
-    const { useState, useEffect, useRef } = React;
-
-    function App() {
-      const [gameState, setGameState] = useState('playing'); 
-      const [timeLeft, setTimeLeft] = useState(900);
-      const [logs, setLogs] = useState(['[시스템] 버려진 연구실에 갇혔습니다. 단서를 찾아 탈출하십시오.']);
-      const [inventory, setInventory] = useState([]);
-      const [activeObject, setActiveObject] = useState(null);
-      const [solved, setSolved] = useState({ desk: false, shelf: false, pc: false, generator: false });
-
-      const logEndRef = useRef(null);
-
-      // 입력 상태 관리
-      const [p1Seq, setP1Seq] = useState('');
-      const [p1V1, setP1V1] = useState('');
-      const [p1V2, setP1V2] = useState('');
-      
-      const [p2K1, setP2K1] = useState('');
-      const [p2K2, setP2K2] = useState('');
-      const [p2K3, setP2K3] = useState('');
-      
-      const [p3F, setP3F] = useState('');
-      const [p3A, setP3A] = useState('');
-      
-      const [p4K1, setP4K1] = useState('');
-      const [p4K2, setP4K2] = useState('');
-      const [p4K3, setP4K3] = useState('');
-
-      const [finalKey, setFinalKey] = useState('');
-
-      const [hintQuiz, setHintQuiz] = useState(null);
-      const [hintInput, setHintInput] = useState('');
-      const [unlockedHints, setUnlockedHints] = useState({ desk: false, shelf: false, pc: false, generator: false, door: false });
-
-      const HINTS = {
-        desk: "조작 변인(낙하 시간에 변화를 주는 요소)과 통제 변인(일정하게 유지하는 요소)을 구분하세요.",
-        shelf: "에이크만은 현미의 특정 성분이 병을 낫게 한다고 믿었습니다. 코페르니쿠스는 관찰 중심의 사고를 강조했습니다.",
-        pc: "전동기는 19세기 기술입니다. 자율주행 최종 단계는 인간의 개입이 '완전'히 배제된 상태입니다.",
-        generator: "해양 풍력은 효율이 좋지만 소음 문제가 있습니다. 환경 오염의 주범은 화석 연료입니다.",
-        door: "현세대와 미래 세대를 아우르는 풍요로운 삶을 뜻하는 7글자 용어입니다. (띄어쓰기 포함 가능)"
-      };
-
-      const SCIENCE_QUIZ_BANK = [
-        { q: "물이 어는 온도는 섭씨 몇 도인가요? (숫자만 입력)", a: ["0", "영도", "0도"] },
-        { q: "태양계에서 가장 큰 행성은 무엇인가요?", a: ["목성"] },
-        { q: "곤충의 다리는 모두 몇 쌍인가요? (숫자만 입력)", a: ["3", "세"] },
-        { q: "식물이 빛을 받아 스스로 양분을 만드는 과정은?", a: ["광합성"] },
-        { q: "자석의 N극과 N극을 가까이 하면 서로 어떻게 되나요?", a: ["밀어낸다", "밀어냄", "반발"] },
-        { q: "지구가 태양 주위를 한 바퀴 도는 데 걸리는 일수는?", a: ["365"] },
-        { q: "개구리의 어릴 적 모습으로 물속을 헤엄치는 것은?", a: ["올챙이"] },
-        { q: "빛의 3원색은 빨강, 초록, 그리고 어떤 색인가요?", a: ["파랑", "파란색", "청색"] }
-      ];
-
-      useEffect(() => {
-        if (gameState !== 'playing') return;
-        const timer = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              setGameState('failed');
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        return () => clearInterval(timer);
-      }, [gameState]);
-
-      useEffect(() => {
-        if (logEndRef.current) {
-          logEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, [logs]);
-
-      const addLog = (msg) => {
-        setLogs((prev) => [...prev, msg]);
-      };
-
-      const sanitize = (str) => str ? str.replace(/\s/g, '') : '';
-
-      const checkAnswer = (input, keywords) => {
-        const sanitizedInput = sanitize(input);
-        if (!sanitizedInput) return false;
-        return keywords.some(keyword => sanitizedInput.includes(keyword));
-      };
-
-      const requestHint = () => {
-        const randomQuiz = SCIENCE_QUIZ_BANK[Math.floor(Math.random() * SCIENCE_QUIZ_BANK.length)];
-        setHintQuiz(randomQuiz);
-        setHintInput('');
-      };
-
-      const solveHint = () => {
-        if (checkAnswer(hintInput, hintQuiz.a)) {
-          setUnlockedHints(prev => ({ ...prev, [activeObject]: true }));
-          setHintQuiz(null);
-          addLog('보안 퀴즈를 통과하여 힌트가 개방되었습니다.');
-        } else {
-          setTimeLeft(prev => Math.max(0, prev - 30));
-          addLog('오답입니다. 페널티로 제한 시간이 30초 감소합니다.');
-          setHintInput('');
-        }
-      };
-
-      const renderHintSection = (objId) => {
-        return (
-          <div className="mt-4 border-t border-gray-700 pt-4">
-            {unlockedHints[objId] ? (
-              <div className="text-yellow-400 text-sm p-2 bg-yellow-900/30 border border-yellow-700/50 rounded">
-                [힌트] {HINTS[objId]}
-              </div>
-            ) : hintQuiz ? (
-              <div className="flex flex-col gap-2 text-sm text-gray-300">
-                <span className="text-cyan-400">보안 퀴즈: {hintQuiz.q}</span>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text" 
-                    value={hintInput} 
-                    onChange={e => setHintInput(e.target.value)} 
-                    onKeyDown={e => e.key === 'Enter' && solveHint()}
-                    className="w-full max-w-[150px] bg-black border border-gray-600 p-1 text-center outline-none focus:border-white rounded" 
-                  />
-                  <button onClick={solveHint} className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs">확인</button>
-                  <button onClick={() => setHintQuiz(null)} className="text-gray-500 hover:text-gray-300 text-xs px-2">취소</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={requestHint} className="text-sm text-gray-500 hover:text-gray-300 underline italic">
-                기초 과학 퀴즈를 풀고 힌트 보기
-              </button>
-            )}
-          </div>
-        );
-      };
-
-      const handleInteract = (obj) => {
-        if (gameState !== 'playing') return;
-        setActiveObject(obj);
-        setHintQuiz(null);
-        setHintInput('');
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
         
-        switch(obj) {
-          case 'desk': addLog('낡은 연구 책상을 조사합니다. 종이 헬리콥터 실험 노트가 보입니다.'); break;
-          case 'shelf': addLog('먼지가 쌓인 책장을 살핍니다. 역사적인 과학 기록들이 꽂혀있습니다.'); break;
-          case 'pc':
-            if (!solved.desk || !solved.shelf) {
-              addLog('컴퓨터 전원은 들어오지만, 인증 데이터가 부족하여 접근할 수 없습니다.');
-              setActiveObject(null);
-            } else {
-              addLog('데이터 칩을 연결하여 메인 컴퓨터에 로그인했습니다.');
-            }
-            break;
-          case 'generator': addLog('비상 발전기를 조사합니다. 에너지 분석 패널이 활성화되었습니다.'); break;
-          case 'door': addLog('굳게 닫힌 철문입니다. 모든 시스템이 정상화되어야 작동할 것 같습니다.'); break;
-        }
-      };
-
-      const checkDesk = () => {
-        const isSeqCorrect = sanitize(p1Seq) === '나가다';
-        const isV1Correct = checkAnswer(p1V1, ['길이', '날개길이']);
-        const isV2Correct = checkAnswer(p1V2, ['너비', '꼬리', '클립', '개수']);
-
-        if (isSeqCorrect && isV1Correct && isV2Correct) {
-          setSolved(p => ({ ...p, desk: true }));
-          setInventory(p => p.includes('탐구 기록 칩') ? p : [...p, '탐구 기록 칩']);
-          addLog('탐구 논리를 복원하여 [탐구 기록 칩]을 획득했습니다.');
-          setActiveObject(null);
-        } else addLog('단서의 논리적 순서나 변인 조건이 틀렸습니다.');
-      };
-
-      const checkShelf = () => {
-        const isK1Correct = checkAnswer(p2K1, ['현미']);
-        const isK2Correct = checkAnswer(p2K2, ['각기병']);
-        const isK3Correct = checkAnswer(p2K3, ['관찰', '경험', '실험']);
-
-        if (isK1Correct && isK2Correct && isK3Correct) {
-          setSolved(p => ({ ...p, shelf: true }));
-          setInventory(p => p.includes('과학사 인증 키') ? p : [...p, '과학사 인증 키']);
-          addLog('과학적 발견 기록을 정리하여 [과학사 인증 키]를 획득했습니다.');
-          setActiveObject(null);
-        } else addLog('핵심 키워드나 사고방식 변화 데이터가 일치하지 않습니다.');
-      };
-
-      const checkPC = () => {
-        const isFCorrect = checkAnswer(p3F, ['2', '전동기']);
-        const isACorrect = checkAnswer(p3A, ['완전', '완벽']);
-
-        if (isFCorrect && isACorrect) {
-          setSolved(p => ({ ...p, pc: true }));
-          setInventory(p => p.includes('보안 오버라이드 코드') ? p : [...p, '보안 오버라이드 코드']);
-          addLog('기술망 오류를 수정하여 [보안 오버라이드 코드]를 획득했습니다.');
-          setActiveObject(null);
-        } else addLog('기술 분류 또는 자율주행 명세가 틀렸습니다.');
-      };
-
-      const checkGenerator = () => {
-        if (checkAnswer(p4K1, ['효율']) && checkAnswer(p4K2, ['소음', '진동']) && checkAnswer(p4K3, ['화석연료', '석탄', '석유'])) {
-          setSolved(p => ({ ...p, generator: true }));
-          addLog('에너지 패러다임을 재설정하여 전력이 공급되기 시작했습니다.');
-          setActiveObject(null);
-        } else addLog('에너지 분석 데이터가 논리적이지 않습니다.');
-      };
-
-      const checkDoor = () => {
-        if (!solved.pc || !solved.generator) {
-          addLog('전력이 부족하거나 보안 코드가 없어 작동하지 않습니다.');
-          return;
-        }
-        if (checkAnswer(finalKey, ['지속가능한삶', '지속가능발전', '지속가능성'])) {
-          setGameState('escaped');
-          addLog('연구실의 문이 열렸습니다. 탈출에 성공했습니다.');
-        } else addLog('최종 키워드가 일치하지 않습니다.');
-      };
-
-      return (
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-4xl flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
-            <h1 className="text-xl font-bold tracking-wider text-gray-100 flex items-center gap-2">
-              <span className="material-symbols-outlined" style={{fontSize: '20px'}}>search</span> LAB_ESCAPE
-            </h1>
-            <div className="flex items-center gap-4 text-lg">
-              <div className="flex items-center gap-2">
-                <span className={`material-symbols-outlined ${timeLeft < 60 ? "text-red-500 animate-pulse" : ""}`} style={{fontSize: '20px'}}>schedule</span>
-                <span className={timeLeft < 60 ? "text-red-500 font-bold" : "font-mono"}>
-                  {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}
-                </span>
-              </div>
+        <!-- 좌측: 데이터 제공 영역 (표 & 그래프) -->
+        <div class="w-full md:w-1/2 p-6 bg-slate-50 border-r border-gray-200 flex flex-col">
+            <h2 class="text-xl font-bold mb-4 text-slate-800">참고 데이터</h2>
+            
+            <!-- 표 영역 -->
+            <div class="overflow-x-auto mb-6">
+                <table class="w-full text-sm text-center border-collapse border border-slate-300">
+                    <thead>
+                        <tr class="bg-slate-200">
+                            <th class="border border-slate-300 p-2">기온 (℃)</th>
+                            <th class="border border-slate-300 p-2">0</th>
+                            <th class="border border-slate-300 p-2">5</th>
+                            <th class="border border-slate-300 p-2">10</th>
+                            <th class="border border-slate-300 p-2">15</th>
+                            <th class="border border-slate-300 p-2">20</th>
+                            <th class="border border-slate-300 p-2">25</th>
+                            <th class="border border-slate-300 p-2">30</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th class="bg-slate-100 border border-slate-300 p-2">포화 수증기량<br>(g/kg)</th>
+                            <td class="border border-slate-300 p-2">3.8</td>
+                            <td class="border border-slate-300 p-2">5.4</td>
+                            <td class="border border-slate-300 p-2">7.6</td>
+                            <td class="border border-slate-300 p-2">10.6</td>
+                            <td class="border border-slate-300 p-2">14.7</td>
+                            <td class="border border-slate-300 p-2">20.0</td>
+                            <td class="border border-slate-300 p-2">27.1</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-          </div>
 
-          <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-4 h-[500px]">
-            <div className="md:col-span-2 bg-gray-900 border border-gray-700 relative rounded flex items-center justify-center p-4 overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(50,50,50,0.4)_0%,rgba(0,0,0,0.8)_100%)] pointer-events-none"></div>
-              
-              <div className="relative w-full h-full flex flex-wrap content-between justify-between">
-                <div className="w-full flex justify-between px-8 mt-8">
-                  <button onClick={() => handleInteract('shelf')} className={`flex flex-col items-center group ${solved.shelf ? 'opacity-30' : ''}`}>
-                    <div className="p-4 bg-gray-800 border border-gray-600 rounded group-hover:border-gray-400 group-hover:bg-gray-700 transition-all shadow-lg">
-                      <span className="material-symbols-outlined text-amber-700" style={{fontSize: '48px'}}>menu_book</span>
-                    </div>
-                    <span className="mt-2 text-[10px] font-bold bg-black/50 px-2 py-1">낡은 책장</span>
-                  </button>
-                  
-                  <button onClick={() => handleInteract('door')} className="flex flex-col items-center group">
-                    <div className="p-4 bg-gray-800 border border-gray-600 rounded group-hover:border-gray-400 group-hover:bg-gray-700 transition-all shadow-lg relative">
-                      {gameState === 'escaped' ? 
-                        <span className="material-symbols-outlined text-green-500" style={{fontSize: '64px'}}>meeting_room</span> : 
-                        <span className="material-symbols-outlined text-gray-500" style={{fontSize: '64px'}}>door_front</span>
-                      }
-                      {solved.pc && solved.generator && gameState !== 'escaped' && <div className="absolute top-2 right-2 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>}
-                    </div>
-                    <span className="mt-2 text-[10px] font-bold bg-black/50 px-2 py-1">철문</span>
-                  </button>
+            <!-- 그래프 영역 -->
+            <div class="flex-1 flex flex-col">
+                <div class="flex justify-between items-end mb-2">
+                    <h3 class="text-md font-semibold text-slate-700">포화 수증기량 곡선</h3>
+                    <p class="text-xs text-amber-600 font-medium">💡 그래프에 마우스를 올려 값을 확인하세요.</p>
                 </div>
-
-                <div className="w-full flex justify-between px-4 mb-4">
-                  <button onClick={() => handleInteract('desk')} className={`flex flex-col items-center group ${solved.desk ? 'opacity-30' : ''}`}>
-                    <div className="p-4 bg-gray-800 border border-gray-600 rounded group-hover:border-gray-400 group-hover:bg-gray-700 transition-all shadow-lg">
-                      <span className="material-symbols-outlined text-gray-400" style={{fontSize: '48px'}}>description</span>
-                    </div>
-                    <span className="mt-2 text-[10px] font-bold bg-black/50 px-2 py-1">연구 책상</span>
-                  </button>
-
-                  <button onClick={() => handleInteract('pc')} className={`flex flex-col items-center group ${solved.pc ? 'opacity-30' : ''}`}>
-                    <div className="p-4 bg-gray-800 border border-gray-600 rounded group-hover:border-blue-400 group-hover:bg-gray-700 transition-all shadow-lg">
-                      <span className={`material-symbols-outlined ${solved.desk && solved.shelf ? "text-blue-400" : "text-gray-600"}`} style={{fontSize: '48px'}}>desktop_windows</span>
-                    </div>
-                    <span className="mt-2 text-[10px] font-bold bg-black/50 px-2 py-1">메인 컴퓨터</span>
-                  </button>
-
-                  <button onClick={() => handleInteract('generator')} className={`flex flex-col items-center group ${solved.generator ? 'opacity-30' : ''}`}>
-                    <div className="p-4 bg-gray-800 border border-gray-600 rounded group-hover:border-yellow-400 group-hover:bg-gray-700 transition-all shadow-lg">
-                      <span className={`material-symbols-outlined ${solved.generator ? "text-yellow-500" : "text-gray-600"}`} style={{fontSize: '48px'}}>bolt</span>
-                    </div>
-                    <span className="mt-2 text-[10px] font-bold bg-black/50 px-2 py-1">비상 발전기</span>
-                  </button>
-                </div>
-              </div>
+                <canvas id="vaporGraph" width="450" height="350" class="w-full h-auto"></canvas>
             </div>
-
-            <div className="bg-gray-900 border border-gray-700 p-4 flex flex-col h-full rounded">
-              <h2 className="text-xs font-bold border-b border-gray-700 pb-2 mb-2 text-gray-500 uppercase tracking-tighter">Inventory</h2>
-              <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-                {inventory.length === 0 ? (
-                  <p className="text-[10px] text-gray-600 italic text-center py-4">비어 있음</p>
-                ) : (
-                  inventory.map((item, idx) => (
-                    <div key={idx} className="bg-gray-800 p-2 rounded text-[11px] flex items-center gap-2 border border-gray-700">
-                      <span className="material-symbols-outlined text-cyan-500" style={{fontSize: '14px'}}>key</span> {item}
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="pt-2 border-t border-gray-700">
-                <h2 className="text-[10px] font-bold mb-2 text-gray-500 uppercase tracking-tighter">Status</h2>
-                <div className="text-[10px] space-y-1">
-                  <p className="flex justify-between">전력: {solved.generator ? <span className="text-green-400 font-bold">ON</span> : <span className="text-red-500">OFF</span>}</p>
-                  <p className="flex justify-between">보안: {solved.pc ? <span className="text-green-400 font-bold">OK</span> : <span className="text-red-500">LOCKED</span>}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full max-w-4xl mt-4 bg-gray-900 border border-gray-700 p-4 h-32 overflow-y-auto rounded font-mono text-[11px] leading-relaxed shadow-inner scroll-smooth">
-            {logs.map((log, idx) => <p key={idx} className="mb-1 text-gray-400">{log}</p>)}
-            <div ref={logEndRef} />
-          </div>
-
-          {gameState !== 'playing' && (
-            <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-900 p-8 border border-gray-700 text-center max-w-md rounded-lg shadow-2xl">
-                <h2 className={`text-3xl font-bold mb-4 ${gameState === 'escaped' ? 'text-green-500' : 'text-red-500'}`}>
-                  {gameState === 'escaped' ? 'ESCAPED' : 'GAME OVER'}
-                </h2>
-                <p className="mb-6 text-gray-400 text-sm">
-                  {gameState === 'escaped' ? '성공적으로 탈출했습니다.' : '제한 시간이 초과되었습니다.'}
-                </p>
-                <button onClick={() => window.location.reload()} className="px-6 py-2 bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors rounded text-sm font-bold text-white">
-                  다시 시작
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeObject && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-40 p-4">
-              <div className="bg-gray-900 border border-gray-600 p-6 max-w-lg w-full rounded-lg shadow-2xl relative">
-                <button onClick={() => setActiveObject(null)} className="absolute top-2 right-4 text-gray-500 hover:text-white text-2xl font-bold">&times;</button>
-                
-                {activeObject === 'desk' && (
-                  <div>
-                    <h3 className="text-base font-bold mb-4 border-b border-gray-700 pb-2 text-cyan-400">연구 책상</h3>
-                    {!solved.desk ? (
-                      <div className="space-y-4 text-xs">
-                        <p className="text-gray-400 italic">"종이 헬리콥터 실험 노트의 내용을 채우시오."</p>
-                        <div className="bg-gray-800 p-3 rounded text-gray-300 border border-gray-700 text-[11px]">
-                          (가) 날개 길이는 변화시키고, 너비와 꼬리 길이는 같게 한다.<br/>
-                          (나) 날개 길이가 길수록 천천히 떨어질 것이다.<br/>
-                          (다) 떨어지는 시간은 3번 반복하여 평균값으로 구한다.
-                        </div>
-                        <div>
-                          <label className="block text-[10px] mb-1 text-gray-500 font-bold">탐구 순서 (예: 가나다):</label>
-                          <input type="text" value={p1Seq} onChange={e=>setP1Seq(e.target.value)} className="w-full bg-black border border-gray-700 p-2 outline-none focus:border-cyan-600 rounded" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div className="p-2 bg-gray-800/50 rounded border border-gray-700">
-                            <span className="block text-gray-500 mb-1">다르게 할 조건</span>
-                            <input type="text" value={p1V1} onChange={e=>setP1V1(e.target.value)} className="w-full bg-transparent border-b border-gray-600 text-center outline-none focus:border-white" placeholder="입력" />
-                          </div>
-                          <div className="p-2 bg-gray-800/50 rounded border border-gray-700">
-                            <span className="block text-gray-500 mb-1">같게 할 조건</span>
-                            <input type="text" value={p1V2} onChange={e=>setP1V2(e.target.value)} className="w-full bg-transparent border-b border-gray-600 text-center outline-none focus:border-white" placeholder="입력" />
-                          </div>
-                        </div>
-                        <button onClick={checkDesk} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-2 rounded font-bold transition-colors text-white">데이터 복원</button>
-                        {renderHintSection('desk')}
-                      </div>
-                    ) : <p className="text-gray-500 italic py-4 text-center">조사가 완료되었습니다.</p>}
-                  </div>
-                )}
-
-                {activeObject === 'shelf' && (
-                  <div>
-                    <h3 className="text-base font-bold mb-4 border-b border-gray-700 pb-2 text-cyan-400">책장 기록</h3>
-                    {!solved.shelf ? (
-                      <div className="space-y-4 text-xs">
-                        <p className="text-gray-400 italic">"과학사 기록 중 빈칸을 채우십시오."</p>
-                        <div className="bg-gray-800 p-3 rounded border border-gray-700 space-y-2">
-                          <p>[가설] "( <input type="text" value={p2K1} onChange={e=>setP2K1(e.target.value)} className="w-12 bg-black border-b border-gray-600 text-center outline-none" /> )에는 ( <input type="text" value={p2K2} onChange={e=>setP2K2(e.target.value)} className="w-12 bg-black border-b border-gray-600 text-center outline-none" /> )을/를 치료하는 물질이 있을 것이다."</p>
-                          <hr className="border-gray-700" />
-                          <p>[사고 변화] 코페르니쿠스 이후 ( <input type="text" value={p2K3} onChange={e=>setP2K3(e.target.value)} className="w-12 bg-black border-b border-gray-600 text-center outline-none" /> ) 중심의 과학적 사고가 중요해졌다.</p>
-                        </div>
-                        <button onClick={checkShelf} className="w-full mt-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-2 rounded font-bold transition-colors text-white">단서 조합</button>
-                        {renderHintSection('shelf')}
-                      </div>
-                    ) : <p className="text-gray-500 italic py-4 text-center text-xs">필요한 단서를 모두 찾았습니다.</p>}
-                  </div>
-                )}
-
-                {activeObject === 'pc' && (
-                  <div>
-                    <h3 className="text-base font-bold mb-4 border-b border-gray-700 pb-2 text-cyan-400">메인 프레임</h3>
-                    {!solved.pc ? (
-                      <div className="space-y-4 text-xs">
-                        <p className="text-gray-400 italic">"첨단 기술 로직 오류를 수정하십시오."</p>
-                        <div className="flex gap-2 justify-center py-2">
-                          <span className="px-2 py-1 bg-gray-800 border border-gray-700 rounded">1. 나노 백신</span>
-                          <span className="px-2 py-1 bg-gray-800 border border-gray-700 rounded">2. 전동기</span>
-                          <span className="px-2 py-1 bg-gray-800 border border-gray-700 rounded">3. AI 로봇</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-gray-800/50 p-2 rounded">
-                          <label>제외할 구시대 기술 번호:</label>
-                          <input type="text" value={p3F} onChange={e=>setP3F(e.target.value)} className="w-10 bg-black border border-gray-700 text-center rounded outline-none" />
-                        </div>
-                        <div className="bg-gray-800 p-3 rounded border border-gray-700 text-center">
-                          자율주행 5단계: ( <input type="text" value={p3A} onChange={e=>setP3A(e.target.value)} className="w-12 bg-black border-b border-gray-600 text-center outline-none" /> )한 자율주행
-                        </div>
-                        <button onClick={checkPC} className="w-full mt-4 bg-blue-900 hover:bg-blue-800 border border-blue-600 py-2 rounded font-bold text-white transition-colors">데이터 덮어쓰기</button>
-                        {renderHintSection('pc')}
-                      </div>
-                    ) : <p className="text-blue-400 italic py-4 text-center">보안 인증 완료.</p>}
-                  </div>
-                )}
-
-                {activeObject === 'generator' && (
-                  <div>
-                    <h3 className="text-base font-bold mb-4 border-b border-gray-700 pb-2 text-cyan-400">발전기 분석기</h3>
-                    {!solved.generator ? (
-                      <div className="space-y-4 text-xs">
-                        <p className="text-gray-400 italic">"해양 풍력 발전의 효율 수치를 입력하십시오."</p>
-                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                          <div className="p-2 bg-gray-800 border border-gray-700 rounded">
-                            장점: 오염 물질 적고 에너지 (<input type="text" value={p4K1} onChange={e=>setP4K1(e.target.value)} className="w-10 bg-black border-b border-gray-600 text-center outline-none" />) 높음
-                          </div>
-                          <div className="p-2 bg-gray-800 border border-gray-700 rounded">
-                            단점: (<input type="text" value={p4K2} onChange={e=>setP4K2(e.target.value)} className="w-10 bg-black border-b border-gray-600 text-center outline-none" />)와 진동 발생
-                          </div>
-                        </div>
-                        <div className="bg-gray-800 p-3 rounded border border-gray-700">
-                          <p className="text-red-500 font-bold mb-1">기후 변화 주원인 연료:</p>
-                          <input type="text" value={p4K3} onChange={e=>setP4K3(e.target.value)} className="w-full bg-black border border-gray-700 p-1 text-center rounded outline-none" placeholder="입력" />
-                        </div>
-                        <button onClick={checkGenerator} className="w-full mt-4 bg-yellow-900 hover:bg-yellow-800 border border-yellow-700 py-2 rounded font-bold text-white transition-colors">전력 공급 시작</button>
-                        {renderHintSection('generator')}
-                      </div>
-                    ) : <p className="text-yellow-500 font-bold text-center py-4 tracking-widest animate-pulse italic">가동 중...</p>}
-                  </div>
-                )}
-
-                {activeObject === 'door' && (
-                  <div className="space-y-4">
-                    <h3 className="text-base font-bold border-b border-gray-700 pb-2 text-cyan-400">탈출 패널</h3>
-                    {(!solved.pc || !solved.generator) ? (
-                      <div className="p-4 bg-red-900/30 border border-red-700 rounded text-red-400 flex flex-col items-center gap-2 text-[11px]">
-                        <span className="material-symbols-outlined">report</span>
-                        <p className="text-center font-bold">에너지 또는 보안 인가가 부족합니다.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="bg-gray-800 p-4 rounded-lg text-center leading-relaxed text-xs text-gray-400 border border-gray-700">
-                          "현세대뿐만 아니라 미래 세대의 행복까지 고려하는 삶"<br/><br/>
-                          <input 
-                            type="text" 
-                            value={finalKey} 
-                            onChange={e=>setFinalKey(e.target.value)} 
-                            placeholder="7글자 핵심 키워드" 
-                            className="bg-black border border-gray-700 p-2 text-center text-base tracking-widest outline-none focus:border-cyan-500 rounded w-full font-bold text-white uppercase" 
-                          />
-                        </div>
-                        <button onClick={checkDoor} className="w-full bg-green-900 hover:bg-green-800 border border-green-700 py-3 rounded font-bold tracking-widest text-white transition-all uppercase">Escape System</button>
-                        {renderHintSection('door')}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
-      );
-    }
 
-    // DOM이 로드된 후 React 앱 실행
-    window.addEventListener('load', () => {
-      const rootElement = document.getElementById('root');
-      if (rootElement) {
-        const root = ReactDOM.createRoot(rootElement);
-        root.render(<App />);
-      }
-    });
-  </script>
+        <!-- 우측: 게임(퀴즈) 영역 -->
+        <div class="w-full md:w-1/2 p-6 flex flex-col justify-center">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-blue-600">수증기량 탈출 게임</h1>
+                <span id="stageIndicator" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-bold text-sm">Stage 1 / 5</span>
+            </div>
+
+            <div id="gameEndScreen" class="hidden text-center py-10">
+                <h2 class="text-3xl font-bold text-green-600 mb-4">모든 스테이지 클리어!</h2>
+                <p class="text-slate-600 mb-6">수증기량 계산 개념을 완벽하게 이해했습니다.</p>
+                <button onclick="resetGame()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">처음부터 다시 하기</button>
+            </div>
+
+            <div id="quizArea" class="flex flex-col gap-4">
+                <div class="bg-blue-50 p-5 rounded-lg border border-blue-100">
+                    <p id="questionText" class="text-lg text-slate-800 font-medium leading-relaxed"></p>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <input type="number" id="answerInput" step="0.1" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="정답을 입력하세요 (숫자만)">
+                    <button id="hintBtn" onclick="showHint()" class="px-4 py-3 bg-amber-500 text-white font-bold rounded-lg hover:bg-amber-600 transition">힌트</button>
+                    <button id="submitBtn" onclick="checkAnswer()" class="px-6 py-3 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition">제출</button>
+                </div>
+
+                <div id="hintArea" class="hidden mt-2 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm whitespace-pre-wrap leading-relaxed"></div>
+
+                <div id="feedbackArea" class="hidden mt-4 p-4 rounded-lg">
+                    <p id="feedbackTitle" class="font-bold text-lg mb-1"></p>
+                    <p id="feedbackDesc" class="text-sm"></p>
+                    <button id="nextBtn" onclick="nextQuestion()" class="mt-4 px-4 py-2 bg-white text-sm font-bold rounded border shadow-sm transition hidden">다음 문제로</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 제공된 데이터
+        const vaporData = [
+            { temp: 0, vapor: 3.8 }, { temp: 5, vapor: 5.4 }, { temp: 10, vapor: 7.6 },
+            { temp: 15, vapor: 10.6 }, { temp: 20, vapor: 14.7 }, { temp: 25, vapor: 20.0 }, { temp: 30, vapor: 27.1 }
+        ];
+
+        let questions = [];
+        let currentStage = 0;
+        
+        // 렌더링 및 애니메이션 상태
+        let animationId = null;
+        let showingFeedback = false;
+        let animData = null;
+        let animStartTime = null;
+        const animDuration = 2500;
+
+        // 인터랙션 상태
+        let interactiveMode = true;
+        let mousePos = null;
+
+        // 랜덤 문제 생성 함수 (1kg 기준으로 고정)
+        function getRandomItem(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function generateQuestions(count) {
+            let generated = [];
+
+            for (let i = 0; i < count; i++) {
+                const type = Math.floor(Math.random() * 4);
+                let qObj = {};
+
+                if (type === 0) {
+                    // 포화 수증기량 찾기
+                    const tObj = getRandomItem(vaporData.slice(1));
+                    const a = tObj.vapor;
+                    qObj = {
+                        q: `현재 기온이 ${tObj.temp}℃인 포화 상태의 공기 1kg에 들어 있는 수증기량을 구하시오. (단위: g)`,
+                        hint: `그래프에서 가로축(기온) ${tObj.temp}℃에 해당하는 점을 찍어 수증기량을 확인하세요.`,
+                        a: a,
+                        exp: `${tObj.temp}℃의 포화 수증기량 곡선상의 값은 ${a}g/kg입니다. 공기가 1kg이므로 정답은 ${a}g입니다.`,
+                        graph: { type: 'point', t: tObj.temp, v: tObj.vapor, label: `${tObj.temp}℃ 포화 상태` }
+                    };
+                } else if (type === 1) {
+                    // 이슬점 찾기
+                    const dewObj = getRandomItem(vaporData.slice(0, 5));
+                    const currentTObj = getRandomItem(vaporData.filter(d => d.temp > dewObj.temp));
+                    const a = dewObj.temp;
+                    qObj = {
+                        q: `현재 기온이 ${currentTObj.temp}℃인 공기 1kg에 ${dewObj.vapor}g의 수증기가 들어 있습니다. 이 공기의 이슬점을 구하시오. (단위: ℃)`,
+                        hint: `현재 수증기량(${dewObj.vapor}g)을 유지한 채 온도를 낮췄을 때(왼쪽으로 이동), 포화 수증기량 곡선과 만나는 온도가 이슬점입니다.`,
+                        a: a,
+                        exp: `현재 수증기량이 ${dewObj.vapor}g/kg입니다. 포화 수증기량이 ${dewObj.vapor}g/kg이 되는 온도를 곡선에서 찾으면 ${a}℃입니다.`,
+                        graph: { type: 'dewPoint', t1: currentTObj.temp, v: dewObj.vapor, t2: dewObj.temp }
+                    };
+                } else if (type === 2) {
+                    // 응결량 찾기
+                    const startObj = getRandomItem(vaporData.slice(3));
+                    const endObj = getRandomItem(vaporData.filter(d => d.temp < startObj.temp));
+                    
+                    const currentVaporKg = parseFloat((endObj.vapor + Math.random() * (startObj.vapor - endObj.vapor)).toFixed(1));
+                    const condKg = parseFloat((currentVaporKg - endObj.vapor).toFixed(1));
+                    const a = condKg;
+
+                    qObj = {
+                        q: `현재 기온이 ${startObj.temp}℃인 공기 1kg에 ${currentVaporKg}g의 수증기가 들어 있습니다. 이 공기를 ${endObj.temp}℃로 냉각시켰을 때 응결량을 구하시오. (단위: g)`,
+                        hint: `1. 그래프에 현재 공기의 상태(${startObj.temp}℃, ${currentVaporKg}g)를 찍어보세요.\n2. ${endObj.temp}℃로 온도를 낮출 때(왼쪽으로 이동) 곡선 밖으로 넘치는 양이 응결량입니다.\n3. (현재 수증기량) - (${endObj.temp}℃의 포화 수증기량)을 계산하세요.`,
+                        a: a,
+                        exp: `현재 수증기량은 ${currentVaporKg}g/kg입니다. ${endObj.temp}℃로 냉각 시 최대로 포함할 수 있는 포화 수증기량은 ${endObj.vapor}g/kg입니다. 1kg 공기이므로 ${currentVaporKg} - ${endObj.vapor} = ${a}g이 응결됩니다.`,
+                        graph: { type: 'condensation', t_start: startObj.temp, v_start: currentVaporKg, t_end: endObj.temp, v_end: endObj.vapor }
+                    };
+                } else {
+                    // 상대 습도 찾기
+                    const tObj = getRandomItem(vaporData.slice(2));
+                    const dewObj = getRandomItem(vaporData.filter(d => d.temp < tObj.temp));
+                    const a = Math.round((dewObj.vapor / tObj.vapor) * 100);
+
+                    qObj = {
+                        q: `기온이 ${tObj.temp}℃이고, 이슬점이 ${dewObj.temp}℃인 공기의 상대 습도를 구하시오. (단위: %, 소수 첫째 자리에서 반올림)`,
+                        hint: `이슬점이 ${dewObj.temp}℃라는 것은 현재 수증기량이 ${dewObj.temp}℃의 포화 수증기량과 같음을 뜻합니다.\n상대 습도 = (현재 수증기량 ÷ ${tObj.temp}℃ 포화 수증기량) × 100`,
+                        a: a,
+                        exp: `이슬점이 ${dewObj.temp}℃이므로 현재 수증기량은 ${dewObj.vapor}g/kg입니다. ${tObj.temp}℃의 포화 수증기량은 ${tObj.vapor}g/kg이므로 (${dewObj.vapor} / ${tObj.vapor}) × 100 ≒ ${a}% 입니다.`,
+                        graph: { type: 'humidity', t: tObj.temp, v_current: dewObj.vapor, v_sat: tObj.vapor, t_dew: dewObj.temp }
+                    };
+                }
+                generated.push(qObj);
+            }
+            return generated;
+        }
+
+        function initGame() {
+            questions = generateQuestions(5);
+            setupCanvasInteraction();
+            loadQuestion();
+            requestAnimationFrame(renderLoop);
+            
+            document.getElementById("answerInput").addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    if(!document.getElementById("submitBtn").disabled) {
+                        checkAnswer();
+                    } else if (!document.getElementById("nextBtn").classList.contains("hidden")) {
+                        nextQuestion();
+                    }
+                }
+            });
+        }
+
+        function loadQuestion() {
+            document.getElementById("stageIndicator").innerText = `Stage ${currentStage + 1} / ${questions.length}`;
+            document.getElementById("questionText").innerText = questions[currentStage].q;
+            document.getElementById("answerInput").value = "";
+            document.getElementById("answerInput").disabled = false;
+            document.getElementById("submitBtn").disabled = false;
+            document.getElementById("hintBtn").disabled = false;
+            document.getElementById("submitBtn").classList.remove("opacity-50", "cursor-not-allowed");
+            document.getElementById("hintArea").classList.add("hidden");
+            document.getElementById("feedbackArea").classList.add("hidden");
+            document.getElementById("nextBtn").classList.add("hidden");
+            document.getElementById("answerInput").focus();
+            
+            interactiveMode = true;
+            showingFeedback = false;
+            mousePos = null;
+        }
+
+        function showHint() {
+            const hintArea = document.getElementById("hintArea");
+            hintArea.classList.remove("hidden");
+            hintArea.innerText = questions[currentStage].hint;
+        }
+
+        function checkAnswer() {
+            const userAnswer = parseFloat(document.getElementById("answerInput").value);
+            if (isNaN(userAnswer)) return;
+
+            const correctAnswer = questions[currentStage].a;
+            const feedbackArea = document.getElementById("feedbackArea");
+            const feedbackTitle = document.getElementById("feedbackTitle");
+            const feedbackDesc = document.getElementById("feedbackDesc");
+            const nextBtn = document.getElementById("nextBtn");
+
+            document.getElementById("answerInput").disabled = true;
+            document.getElementById("submitBtn").disabled = true;
+            document.getElementById("hintBtn").disabled = true;
+            document.getElementById("submitBtn").classList.add("opacity-50", "cursor-not-allowed");
+            
+            interactiveMode = false; // 정답 확인 시 인터랙션 중지
+            mousePos = null;
+
+            feedbackArea.classList.remove("hidden", "bg-red-50", "bg-green-50");
+            feedbackTitle.classList.remove("text-red-700", "text-green-700");
+            feedbackDesc.classList.remove("text-red-600", "text-green-600");
+            nextBtn.classList.remove("hidden", "text-red-700", "border-red-300", "hover:bg-red-50", "text-green-700", "border-green-300", "hover:bg-green-50");
+
+            if (userAnswer === correctAnswer) {
+                feedbackArea.classList.add("bg-green-50");
+                feedbackTitle.classList.add("text-green-700");
+                feedbackDesc.classList.add("text-green-600");
+                feedbackTitle.innerText = "정답입니다!";
+                feedbackDesc.innerText = questions[currentStage].exp;
+                nextBtn.innerText = currentStage === questions.length - 1 ? "결과 보기" : "다음 문제로";
+                nextBtn.classList.add("text-green-700", "border-green-300", "hover:bg-green-50");
+
+                // 애니메이션 시작
+                animData = questions[currentStage].graph;
+                animStartTime = null;
+                showingFeedback = true;
+            } else {
+                feedbackArea.classList.add("bg-red-50");
+                feedbackTitle.classList.add("text-red-700");
+                feedbackDesc.classList.add("text-red-600");
+                feedbackTitle.innerText = "오답입니다.";
+                feedbackDesc.innerText = "계산을 다시 확인하거나, 힌트를 참고하여 그래프에 직접 점을 찍어보세요.";
+                nextBtn.innerText = "다시 풀기";
+                nextBtn.classList.add("text-red-700", "border-red-300", "hover:bg-red-50");
+            }
+        }
+
+        function nextQuestion() {
+            const nextBtn = document.getElementById("nextBtn");
+            if (nextBtn.innerText === "다시 풀기") {
+                document.getElementById("answerInput").value = "";
+                document.getElementById("answerInput").disabled = false;
+                document.getElementById("submitBtn").disabled = false;
+                document.getElementById("hintBtn").disabled = false;
+                document.getElementById("submitBtn").classList.remove("opacity-50", "cursor-not-allowed");
+                document.getElementById("feedbackArea").classList.add("hidden");
+                document.getElementById("nextBtn").classList.add("hidden");
+                interactiveMode = true;
+                document.getElementById("answerInput").focus();
+            } else {
+                currentStage++;
+                if (currentStage >= questions.length) {
+                    document.getElementById("quizArea").classList.add("hidden");
+                    document.getElementById("gameEndScreen").classList.remove("hidden");
+                    document.getElementById("stageIndicator").innerText = "Clear";
+                    interactiveMode = false;
+                    showingFeedback = false;
+                } else {
+                    loadQuestion();
+                }
+            }
+        }
+
+        function resetGame() {
+            currentStage = 0;
+            questions = generateQuestions(5);
+            document.getElementById("quizArea").classList.remove("hidden");
+            document.getElementById("gameEndScreen").classList.add("hidden");
+            loadQuestion();
+        }
+
+        // --- 캔버스 렌더링 및 인터랙션 시스템 ---
+        const canvasPadding = 40;
+        const maxX = 35;
+        const maxY = 30;
+
+        function getX(t, w) { return canvasPadding + (t / maxX) * (w - canvasPadding * 2); }
+        function getY(v, h) { return h - canvasPadding - (v / maxY) * (h - canvasPadding * 2); }
+        function getT(x, w) { return ((x - canvasPadding) / (w - canvasPadding * 2)) * maxX; }
+        function getV(y, h) { return ((h - canvasPadding - y) / (h - canvasPadding * 2)) * maxY; }
+
+        function setupCanvasInteraction() {
+            const canvas = document.getElementById("vaporGraph");
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (!interactiveMode) return;
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                let t = getT(mouseX, canvas.width);
+                let v = getV(mouseY, canvas.height);
+                let snapped = false;
+
+                // 스냅(Snap) 로직: 곡선 데이터와 가까우면 자석처럼 붙임
+                vaporData.forEach(p => {
+                    const px = getX(p.temp, canvas.width);
+                    const py = getY(p.vapor, canvas.height);
+                    if (Math.abs(mouseX - px) < 15 && Math.abs(mouseY - py) < 15) {
+                        t = p.temp;
+                        v = p.vapor;
+                        snapped = true;
+                    }
+                });
+
+                // 캔버스 범위를 벗어나지 않게 클램핑
+                t = Math.max(0, Math.min(maxX, t));
+                v = Math.max(0, Math.min(maxY, v));
+
+                mousePos = { 
+                    x: getX(t, canvas.width), 
+                    y: getY(v, canvas.height), 
+                    t: t.toFixed(1), 
+                    v: v.toFixed(1), 
+                    snapped 
+                };
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                mousePos = null;
+            });
+        }
+
+        function renderLoop(timestamp) {
+            const canvas = document.getElementById("vaporGraph");
+            if(!canvas) return;
+            const ctx = canvas.getContext("2d");
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            drawBaseGraph(ctx, width, height);
+
+            if (showingFeedback && animData) {
+                if (!animStartTime) animStartTime = timestamp;
+                let progress = (timestamp - animStartTime) / animDuration;
+                if (progress > 1) progress = 1;
+
+                drawAnimation(ctx, animData, progress, width, height);
+            } else if (interactiveMode && mousePos) {
+                drawHoverCrosshair(ctx, width, height);
+            }
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawBaseGraph(ctx, width, height) {
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            
+            for (let i = 0; i <= maxX; i += 5) {
+                const x = getX(i, width);
+                ctx.moveTo(x, canvasPadding);
+                ctx.lineTo(x, height - canvasPadding);
+                ctx.fillStyle = "#64748b";
+                ctx.font = "12px sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText(i, x, height - canvasPadding + 15);
+            }
+
+            for (let i = 0; i <= maxY; i += 5) {
+                const y = getY(i, height);
+                ctx.moveTo(canvasPadding, y);
+                ctx.lineTo(width - canvasPadding, y);
+                ctx.fillStyle = "#64748b";
+                ctx.font = "12px sans-serif";
+                ctx.textAlign = "right";
+                ctx.fillText(i, canvasPadding - 10, y + 4);
+            }
+            ctx.stroke();
+
+            ctx.strokeStyle = "#475569";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(canvasPadding, canvasPadding);
+            ctx.lineTo(canvasPadding, height - canvasPadding);
+            ctx.lineTo(width - canvasPadding, height - canvasPadding);
+            ctx.stroke();
+
+            ctx.fillStyle = "#334155";
+            ctx.font = "bold 12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("기온 (℃)", width / 2, height - 5);
+            
+            ctx.save();
+            ctx.translate(15, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText("수증기량 (g/kg)", 0, 0);
+            ctx.restore();
+
+            ctx.strokeStyle = "#2563eb";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            vaporData.forEach((point, index) => {
+                const x = getX(point.temp, width);
+                const y = getY(point.vapor, height);
+                if (index === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            ctx.fillStyle = "#1e40af";
+            vaporData.forEach(point => {
+                const x = getX(point.temp, width);
+                const y = getY(point.vapor, height);
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawHoverCrosshair(ctx, width, height) {
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+
+            ctx.beginPath();
+            ctx.moveTo(mousePos.x, canvasPadding);
+            ctx.lineTo(mousePos.x, height - canvasPadding);
+            ctx.moveTo(canvasPadding, mousePos.y);
+            ctx.lineTo(width - canvasPadding, mousePos.y);
+            ctx.stroke();
+            ctx.setLineDash([]); // 리셋
+
+            // 값 표시 툴팁
+            ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 1;
+            
+            const text = `기온: ${mousePos.t}℃, 수증기량: ${mousePos.v}g`;
+            ctx.font = "12px sans-serif";
+            const textWidth = ctx.measureText(text).width;
+            
+            let tx = mousePos.x + 10;
+            let ty = mousePos.y - 20;
+            
+            // 화면 밖으로 넘어가지 않게 보정
+            if (tx + textWidth + 10 > width) tx = mousePos.x - textWidth - 10;
+            if (ty < canvasPadding) ty = mousePos.y + 20;
+
+            ctx.fillRect(tx, ty - 14, textWidth + 10, 20);
+            ctx.strokeRect(tx, ty - 14, textWidth + 10, 20);
+            
+            ctx.fillStyle = "#b45309";
+            ctx.textAlign = "left";
+            ctx.fillText(text, tx + 5, ty);
+            
+            // 포인트 하이라이트
+            ctx.fillStyle = mousePos.snapped ? "#ef4444" : "#f59e0b";
+            ctx.beginPath();
+            ctx.arc(mousePos.x, mousePos.y, mousePos.snapped ? 6 : 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawAnimation(ctx, data, progress, width, height) {
+            ctx.lineWidth = 2;
+            ctx.font = "bold 12px sans-serif";
+            ctx.setLineDash([]);
+
+            if (data.type === 'point') {
+                const x = getX(data.t, width);
+                const y = getY(data.v, height);
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.textAlign = "center";
+                ctx.fillText(data.label, x, y - 12);
+            }
+            else if (data.type === 'dewPoint') {
+                const startX = getX(data.t1, width);
+                const y = getY(data.v, height);
+                const targetX = getX(data.t2, width);
+                const currentX = startX + (targetX - startX) * progress;
+
+                drawArrow(ctx, startX, y, currentX, y, "#ef4444");
+                
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath(); ctx.arc(startX, y, 4, 0, Math.PI*2); ctx.fill();
+                
+                if (progress === 1) {
+                    ctx.beginPath(); ctx.arc(targetX, y, 6, 0, Math.PI*2); ctx.fill();
+                    ctx.textAlign = "right";
+                    ctx.fillText(`이슬점(${data.t2}℃)`, targetX - 10, y + 4);
+                }
+            }
+            else if (data.type === 'condensation') {
+                const startX = getX(data.t_start, width);
+                const targetX = getX(data.t_end, width);
+                const startY = getY(data.v_start, height);
+                const targetY = getY(data.v_end, height);
+
+                ctx.fillStyle = "#ef4444";
+                ctx.beginPath(); ctx.arc(startX, startY, 4, 0, Math.PI*2); ctx.fill();
+
+                if (progress < 0.5) {
+                    const p = progress * 2;
+                    const currentX = startX + (targetX - startX) * p;
+                    drawArrow(ctx, startX, startY, currentX, startY, "#ef4444");
+                } else {
+                    drawArrow(ctx, startX, startY, targetX, startY, "#ef4444");
+                    const p = (progress - 0.5) * 2;
+                    const currentY = startY + (targetY - startY) * p;
+                    drawArrow(ctx, targetX, startY, targetX, currentY, "#ef4444");
+                }
+
+                if (progress === 1) {
+                    ctx.beginPath(); ctx.arc(targetX, targetY, 6, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#ef4444";
+                    ctx.textAlign = "left";
+                    ctx.fillText(`응결량`, targetX + 10, startY + (targetY - startY)/2 + 4);
+                }
+            }
+            else if (data.type === 'humidity') {
+                const x = getX(data.t, width);
+                const baseY = getY(0, height);
+                const currentY = getY(data.v_current, height);
+                const satY = getY(data.v_sat, height);
+
+                if(data.t_dew) {
+                    const dewX = getX(data.t_dew, width);
+                    drawArrow(ctx, x, currentY, dewX, currentY, "#94a3b8");
+                    ctx.fillStyle = "#64748b";
+                    ctx.textAlign = "right";
+                    ctx.fillText(`이슬점`, dewX - 5, currentY + 4);
+                }
+
+                const animCurrentY = baseY + (currentY - baseY) * progress;
+                const animSatY = baseY + (satY - baseY) * progress;
+
+                ctx.fillStyle = "rgba(59, 130, 246, 0.2)";
+                ctx.fillRect(x - 12, animSatY, 24, baseY - animSatY);
+                ctx.strokeStyle = "#3b82f6";
+                ctx.strokeRect(x - 12, animSatY, 24, baseY - animSatY);
+
+                ctx.fillStyle = "rgba(239, 68, 68, 0.5)";
+                ctx.fillRect(x - 12, animCurrentY, 24, baseY - animCurrentY);
+                ctx.strokeStyle = "#ef4444";
+                ctx.strokeRect(x - 12, animCurrentY, 24, baseY - animCurrentY);
+
+                if (progress === 1) {
+                    ctx.fillStyle = "#1e40af";
+                    ctx.textAlign = "left";
+                    ctx.fillText(`포화: ${data.v_sat}g`, x + 18, satY + 10);
+                    ctx.fillStyle = "#b91c1c";
+                    ctx.fillText(`현재: ${data.v_current}g`, x + 18, currentY + 10);
+                }
+            }
+        }
+
+        function drawArrow(ctx, fromX, fromY, toX, toY, color) {
+            if (fromX === toX && fromY === toY) return;
+            const headlen = 8;
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+        }
+
+        window.onload = initGame;
+    </script>
 </body>
 </html>
